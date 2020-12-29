@@ -1,63 +1,90 @@
 <template>
-  <div class="container">
-    <div>
-      <Logo />
-      <h1 class="title">algolia-todo</h1>
-      <div class="links">
-        <a
-          href="https://nuxtjs.org/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="button--green"
-        >
-          Documentation
-        </a>
-        <a
-          href="https://github.com/nuxt/nuxt.js"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="button--grey"
-        >
-          GitHub
-        </a>
-      </div>
-    </div>
+  <div>
+    <b-form-row>
+      <b-col cols="10">
+        <b-form-input v-model="query" type="text" />
+      </b-col>
+      <b-col cols="2">
+        <b-button block @click="searchTodo">検索</b-button>
+      </b-col>
+    </b-form-row>
+    <b-button class="my-2" variant="primary" block @click="openRegisterModal"
+      >TODOを追加</b-button
+    >
+
+    <b-card
+      v-for="todo in todoList"
+      :key="todo.objectID"
+      class="my-2"
+      :title="todo.title"
+    >
+      <p>{{ todo.description }}</p>
+    </b-card>
+
+    <b-modal
+      v-model="registerModalIsVisible"
+      @ok="registerTodo"
+      @calcel="clearInput"
+    >
+      <b-form-group label="Title" label-for="title">
+        <b-form-input id="title" v-model="todoInput.title" type="text" />
+      </b-form-group>
+      <b-form-group label="Description" label-for="description">
+        <b-form-input
+          id="description"
+          v-model="todoInput.description"
+          type="text"
+        />
+      </b-form-group>
+    </b-modal>
   </div>
 </template>
 
 <script>
-export default {}
+import * as algoliasearch from 'algoliasearch'
+import config from '~/algolia.config.js'
+
+const client = algoliasearch(config.appId, config.apiKey)
+const index = client.initIndex('todo')
+
+export default {
+  async asyncData() {
+    const searchResult = await index.search('')
+    return {
+      todoList: searchResult.hits,
+    }
+  },
+  data() {
+    return {
+      todoInput: {
+        title: '',
+        description: '',
+        done: false,
+      },
+      registerModalIsVisible: false,
+      query: '',
+      todoList: [],
+    }
+  },
+  methods: {
+    clearInput() {
+      this.todoInput.title = ''
+      this.todoInput.description = ''
+      this.todoInput.done = false
+    },
+    openRegisterModal() {
+      this.registerModalIsVisible = true
+    },
+    async registerTodo() {
+      await index.saveObject(this.todoInput, {
+        autoGenerateObjectIDIfNotExist: true,
+      })
+      this.clearInput()
+    },
+    async searchTodo() {
+      const searchResult = await index.search(this.query)
+      this.todoList = searchResult.hits
+    },
+  },
+}
 </script>
-
-<style>
-.container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.title {
-  display: block;
-  font-family: 'Quicksand', 'Source Sans Pro', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-size: 100px;
-  font-weight: 300;
-  color: #35495e;
-  letter-spacing: 1px;
-}
-
-.subtitle {
-  padding-bottom: 15px;
-  font-size: 42px;
-  font-weight: 300;
-  color: #526488;
-  word-spacing: 5px;
-}
-
-.links {
-  padding-top: 15px;
-}
-</style>
